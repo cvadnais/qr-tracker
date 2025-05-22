@@ -58,27 +58,42 @@
     <div id="qrResult"></div>
   </div>
 
-  <script>
-    const form = document.getElementById('qrForm');
-    const urlInput = document.getElementById('urlInput');
-    const qrResult = document.getElementById('qrResult');
+<script>
+  const form = document.getElementById('qrForm');
+  const urlInput = document.getElementById('urlInput');
+  const qrResult = document.getElementById('qrResult');
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const formData = new FormData();
-      formData.append('url', urlInput.value);
-      const res = await fetch('/create', {
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const url = urlInput.value.trim();
+    if (!url) {
+      qrResult.textContent = 'Please enter a valid URL.';
+      return;
+    }
+
+    try {
+      const response = await fetch('https://qr-tracker-7atk.onrender.com/create', {
         method: 'POST',
-        body: formData
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ url })
       });
-      if (res.ok) {
-        const blob = await res.blob();
-        const imgURL = URL.createObjectURL(blob);
-        qrResult.innerHTML = `<h3>Your QR Code:</h3><img src="${imgURL}" alt="QR Code" />`;
-      } else {
-        qrResult.textContent = 'Error generating QR Code.';
+
+      if (!response.ok) {
+        throw new Error('Failed to generate QR code');
       }
-    });
-  </script>
+
+      const blob = await response.blob();
+      const imgURL = URL.createObjectURL(blob);
+      qrResult.innerHTML = `<h3>Your QR Code:</h3><img src="${imgURL}" alt="QR Code" />`;
+    } catch (err) {
+      console.error(err);
+      qrResult.textContent = 'An error occurred generating the QR code.';
+    }
+  });
+</script>
+
+
 </body>
 </html>
