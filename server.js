@@ -12,6 +12,12 @@ const db = new sqlite3.Database('./qrcodes.db');
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+const cors = require('cors');
+app.use(cors({
+  origin: 'https://dx1.dev'
+}));
+
+
 // Initialize database
 db.serialize(() => {
   db.run(`CREATE TABLE IF NOT EXISTS links (
