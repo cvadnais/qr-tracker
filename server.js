@@ -65,7 +65,11 @@ app.post('/create', async (req, res) => {
         console.error('QR generation error:', err.message);
         return res.status(500).send('QR error');
       }
-      res.type('png').send(buffer);
+res.json({
+  code,
+  shortUrl,
+  qr: `data:image/png;base64,${buffer.toString('base64')}`
+});
     });
   });
 });
