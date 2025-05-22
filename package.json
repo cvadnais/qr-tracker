@@ -1,0 +1,85 @@
+// server.js
+const express = require('express');
+const sqlite3 = require('sqlite3').verbose();
+const bodyParser = require('body-parser');
+const path = require('path');
+const QRCode = require('qrcode');
+const crypto = require('crypto');
+
+const app = express();
+const PORT = 3000;
+const db = new sqlite3.Database('./qrcodes.db');
+
+// Middleware
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Initialize DB
+db.serialize(() => {
+  db.run(`CREATE TABLE IF NOT EXISTS links (
+    code TEXT PRIMARY KEY,
+    url TEXT,
+    clicks INTEGER DEFAULT 0
+  )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS clicks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code TEXT,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+    user_agent TEXT,
+    ip TEXT
+  )`);
+});
+
+// Helper
+function generateCode() {
+  return crypto.randomBytes(3).toString('hex');
+}
+
+// Create QR Code route
+app.post('/create', async (req, res) => {
+  const url = req.body.url;
+  if (!url) return res.status(400).send('URL required');
+
+  const code = generateCode();
+  const shortUrl = `${req.protocol}://${req.get('host')}/r/${code}`;
+
+  db.run('INSERT INTO links (code, url) VALUES (?, ?)', [code, url], (err) => {
+    if (err) return res.status(500).send('DB error');
+
+    QRCode.toBuffer(shortUrl, { type: 'png' }, (err, buffer) => {
+      if (err) return res.status(500).send('QR generation error');
+      res.type('png').send(buffer);
+    });
+  });
+});
+
+// Redirect route
+app.get('/r/:code', (req, res) => {
+  const code = req.params.code;
+
+  db.get('SELECT url FROM links WHERE code = ?', [code], (err, row) => {
+    if (!row) return res.status(404).send('Not found');
+
+    db.run('UPDATE links SET clicks = clicks + 1 WHERE code = ?', [code]);
+    db.run('INSERT INTO clicks (code, user_agent, ip) VALUES (?, ?, ?)', [
+      code,
+      req.headers['user-agent'],
+      req.ip,
+    ]);
+
+    res.redirect(row.url);
+  });
+});
+
+// Stats endpoint
+app.get('/stats/:code', (req, res) => {
+  db.get('SELECT url, clicks FROM links WHERE code = ?', [req.params.code], (err, row) => {
+    if (!row) return res.status(404).json({ error: 'Not found' });
+    res.json(row);
+  });
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+});
