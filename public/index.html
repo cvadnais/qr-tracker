@@ -72,7 +72,7 @@
     }
 
     try {
-      const response = await fetch('https://qr-tracker-7atk.onrender.com/create', {
+      const res = await fetch('https://qr-tracker-7atk.onrender.com/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -80,13 +80,15 @@
         body: JSON.stringify({ url })
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to generate QR code');
-      }
+      if (!res.ok) throw new Error('Failed to generate QR code');
 
-      const blob = await response.blob();
-      const imgURL = URL.createObjectURL(blob);
-      qrResult.innerHTML = `<h3>Your QR Code:</h3><img src="${imgURL}" alt="QR Code" />`;
+      const data = await res.json();
+      qrResult.innerHTML = `
+        <h3>Your QR Code:</h3>
+        <img src="${data.qr}" alt="QR Code" />
+        <p><strong>Short URL:</strong> <a href="${data.shortUrl}" target="_blank">${data.shortUrl}</a></p>
+        <p><strong>Track it here:</strong> <a href="https://qr-tracker-7atk.onrender.com/stats/${data.code}" target="_blank">View Stats</a></p>
+      `;
     } catch (err) {
       console.error(err);
       qrResult.textContent = 'An error occurred generating the QR code.';
