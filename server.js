@@ -96,10 +96,53 @@ app.get('/r/:code', (req, res) => {
 // Stats endpoint
 app.get('/stats/:code', (req, res) => {
   db.get('SELECT url, clicks FROM links WHERE code = ?', [req.params.code], (err, row) => {
-    if (!row) return res.status(404).json({ error: 'Not found' });
-    res.json(row);
+    if (!row) {
+      return res.status(404).send('<h1>QR Code Not Found</h1>');
+    }
+
+    res.send(`
+      <html>
+        <head>
+          <title>QR Stats – ${req.params.code}</title>
+          <style>
+            body {
+              font-family: sans-serif;
+              background: #f4f4f4;
+              padding: 2rem;
+              text-align: center;
+            }
+            .card {
+              background: white;
+              padding: 2rem;
+              border-radius: 12px;
+              box-shadow: 0 0 10px rgba(0,0,0,0.1);
+              display: inline-block;
+            }
+            a {
+              color: #007BFF;
+              text-decoration: none;
+            }
+            h1 {
+              margin-bottom: 0.5rem;
+            }
+            p {
+              margin: 0.25rem 0;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="card">
+            <h1>QR Code Stats</h1>
+            <p><strong>Short Code:</strong> ${req.params.code}</p>
+            <p><strong>Clicks:</strong> ${row.clicks}</p>
+            <p><strong>Destination URL:</strong><br><a href="${row.url}" target="_blank">${row.url}</a></p>
+          </div>
+        </body>
+      </html>
+    `);
   });
 });
+
 
 // Health check
 app.get('/', (req, res) => {
