@@ -149,6 +149,83 @@ app.get('/', (req, res) => {
   res.send('Backend is alive');
 });
 
+app.get('/dashboard', (req, res) => {
+  db.all('SELECT code, url, clicks FROM links ORDER BY clicks DESC', (err, rows) => {
+    if (err) {
+      console.error('DB error on /dashboard:', err.message);
+      return res.status(500).send('Internal Server Error');
+    }
+
+    const rowsHtml = rows.map(row => `
+      <tr>
+        <td><a href="/r/${row.code}" target="_blank">${row.code}</a></td>
+        <td><a href="${row.url}" target="_blank">${row.url}</a></td>
+        <td>${row.clicks}</td>
+        <td><a href="/stats/${row.code}" target="_blank">View Stats</a></td>
+      </tr>
+    `).join('');
+
+    res.send(`
+      <html>
+        <head>
+          <title>QR Tracker Dashboard</title>
+          <style>
+            body {
+              font-family: sans-serif;
+              background: #f9f9f9;
+              padding: 2rem;
+            }
+            h1 {
+              text-align: center;
+            }
+            table {
+              width: 100%;
+              max-width: 900px;
+              margin: 2rem auto;
+              border-collapse: collapse;
+              background: white;
+              box-shadow: 0 0 8px rgba(0,0,0,0.05);
+            }
+            th, td {
+              padding: 12px 15px;
+              text-align: left;
+              border-bottom: 1px solid #ddd;
+            }
+            th {
+              background: #007BFF;
+              color: white;
+            }
+            tr:hover {
+              background: #f1f1f1;
+            }
+            a {
+              color: #007BFF;
+              text-decoration: none;
+            }
+          </style>
+        </head>
+        <body>
+          <h1>QR Tracker Dashboard</h1>
+          <table>
+            <thead>
+              <tr>
+                <th>Short Code</th>
+                <th>Destination URL</th>
+                <th>Clicks</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `);
+  });
+});
+
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
