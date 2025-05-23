@@ -40,8 +40,6 @@ function generateCode() {
 }
 
 // Create QR Code route
-const Jimp = require('jimp');
-
 app.post('/create', async (req, res) => {
   console.log('Incoming request to /create');
   console.log('Request body:', req.body);
@@ -56,39 +54,26 @@ app.post('/create', async (req, res) => {
   const code = generateCode();
   const shortUrl = `${req.protocol}://${req.get('host')}/r/${code}`;
 
-  db.run('INSERT INTO links (code, url) VALUES (?, ?)', [code, url], async (err) => {
+  db.run('INSERT INTO links (code, url) VALUES (?, ?)', [code, url], (err) => {
     if (err) {
       console.error('Database error:', err.message);
       return res.status(500).send('DB error');
     }
 
-    try {
-      const qrBuffer = await QRCode.toBuffer(shortUrl);
-      const qrImage = await Jimp.read(qrBuffer);
-      const logo = await Jimp.read('public/logo.png'); // <-- must exist
-
-      logo.resize(60, 60); // adjust size as needed
-
-      const x = (qrImage.bitmap.width / 2) - (logo.bitmap.width / 2);
-      const y = (qrImage.bitmap.height / 2) - (logo.bitmap.height / 2);
-      qrImage.composite(logo, x, y);
-
-      const finalBuffer = await qrImage.getBufferAsync(Jimp.MIME_PNG);
+    QRCode.toBuffer(shortUrl, { type: 'png' }, (err, buffer) => {
+      if (err) {
+        console.error('QR generation error:', err.message);
+        return res.status(500).send('QR error');
+      }
 
       res.json({
         code,
         shortUrl,
-        qr: `data:image/png;base64,${finalBuffer.toString('base64')}`
+        qr: `data:image/png;base64,${buffer.toString('base64')}`
       });
-
-    } catch (err) {
-      console.error('QR or Logo error:', err.message);
-      res.status(500).send('QR generation failed');
-    }
+    });
   });
 });
-
-
 
 // Redirect and log click
 app.get('/r/:code', (req, res) => {
